@@ -1,0 +1,174 @@
+//////////////////////////////////////////////////////////////////////////////////
+//本程序只供学习使用，未经作者许可，不得用于其它任何用途
+//中景园电子
+//店铺地址：http://shop73023976.taobao.com/?spm=2013.1.0.0.M4PqC2
+//
+//  文 件 名   : main.c
+//  版 本 号   : v2.0
+//  作    者   : HuangKai
+//  生成日期   : 2014-0101
+//  最近修改   :
+//  功能描述   : OLED 4接口演示例程(51系列)
+//              说明:
+//              ----------------------------------------------------------------
+//              GND    电源地
+//              VCC  接5V或3.3v电源
+//              D0   P1^0（SCL）
+//              D1   P1^1（SDA）
+//              RES  接P12
+//              DC   接P13
+//              CS   接P14
+//              ----------------------------------------------------------------
+// 修改历史   :
+// 日    期   :
+// 作    者   : HuangKai
+// 修改内容   : 创建文件
+//版权所有，盗版必究。
+//Copyright(C) 中景园电子2014/3/16
+//All rights reserved
+//******************************************************************************/
+
+#include <15W4KxxS4.h>
+#include "stdio.h"
+#include "config.h"
+#include "delay.h"
+#include "oled.h"
+#include "bmp.h"
+#include "led.h"
+#include "key.h"
+#include "ds1302.h"
+#include "usart.h"
+#include "DHT11.H"
+
+uint16  tick = 0;
+uint8  hour[3] = "  \0", minute[3] = "  \0", second[3] = "  \0";
+uint8  year[3] = "  \0", month[3] = "  \0", day[3] = "  \0";
+uint8  week, week_num = 0;
+bit  OLED_OnOff = 1, RGB_OnOff = 1;
+int main ( void )
+{
+    /////////////////////////////////////////////////
+    //注意: STC15W4K32S4系列的芯片,上电后所有与PWM相关的IO口均为
+    //      高阻态,需将这些口设置为准双向口或强推挽模式方可正常使用
+    //相关IO: P0.6/P0.7/P1.6/P1.7/P2.1/P2.2
+    //        P2.3/P2.7/P3.7/P4.2/P4.4/P4.5
+    /////////////////////////////////////////////////
+    P0M1 = 0x00;
+    P0M0 = 0x00;	//设置P0.0~P0.7为准双向口
+    P1M1 = 0x00;
+    P1M0 = 0x00;	//设置P1.0~P1.7为准双向口
+    P2M1 = 0x00;
+    P2M0 = 0x00;	//设置P2.0~P2.7为准双向口
+    P3M1 = 0x00;
+    P3M0 = 0x00;	//设置P3.0~P3.7为准双向口
+    P4M1 = 0x00;
+    P4M0 = 0x00;	//设置P4.0~P4.7为准双向口
+    P5M1 = 0x00;
+    P5M0 = 0x00;	//设置P5.0~P5.5为准双向口
+    P6M1 = 0x00;
+    P6M0 = 0x00;	//设置P6.0~P6.7为准双向口
+    P7M1 = 0x00;
+    P7M0 = 0x00;	//设置P7.0~P7.7为准双向口
+    AUXR = 0X0;
+
+    key_init();
+    usart_init ( USART1 );
+    //Ds1302Init();
+    delayxus ( 100 );
+    SendString ( "STC15F2K60S2\r\nUart1 Test !\r\n", USART1 );
+    delayxus ( 100 );
+    printf ( "helloworld\r\n" );
+
+    //	OLED_RST_Clr();
+    //	 delayxms(300);
+    //	 OLED_RST_Set();
+    OLED_DC_Clr();
+    delayxms ( 500 );
+    OLED_CS_Clr();
+
+    delayxms ( 1000 );
+    OLED_Init();			//初始化OLED
+    OLED_Clear()  	;
+    delayxms ( 200 );
+
+    OLED_ShowNum ( 8, 2, 20, 2, 16 ); //显示20
+    OLED_ShowCHinese ( 40, 2, 0 ); //年  8^  2019年01月01日  8^
+    OLED_ShowCHinese ( 72, 2, 1 ); //月
+    OLED_ShowCHinese ( 104, 2, 2 ); //日
+
+            OLED_ShowString ( 20, 5, ":", 16);
+            OLED_ShowString ( 44, 5, ":", 16);						
+    OLED_ShowCHinese ( 76, 5, 6 ); //星
+    OLED_ShowCHinese ( 92, 5, 7 ); //期
+
+    while ( 1 )
+    {
+        if ( !KEY1 )
+        {
+            LED1 = 0;
+            LED2 = 0;
+            LED3 = 0;
+            while ( !KEY1 );
+            Ds1302Init();
+            LED1 = 1;
+            LED2 = 1;
+            LED3 = 1;
+        }
+
+        led_test();
+        //key_test();
+        if(tick % 20 == 0) //时间1s钟更新5次   大约
+        {
+            Ds1302ReadTime();
+            //DHT11_receive();
+            //printf ( "20%bx年%bx月%bx日,星期%bx,%bx:%bx:%bx\r\n",TIME[6],TIME[4],TIME[3],TIME[5],TIME[2],TIME[1],TIME[0] );
+
+            year[0] = ( TIME[6] / 16 ) + '0';
+            year[1] = ( TIME[6] & 0x0f ) + '0';
+
+            month[0] = ( TIME[4] / 16 ) + '0';
+            if(month[0] == '0') month[0] = ' ';
+            month[1] = ( TIME[4] & 0x0f ) + '0';
+
+            day[0] = ( TIME[3] / 16 ) + '0';
+            if(day[0] == '0') day[0] = ' ';
+            day[1] = ( TIME[3] & 0x0f ) + '0';
+
+
+
+            week = ( TIME[5] & 0x0f );
+            week_num = week + 7;
+
+
+            hour[0] = ( TIME[2] / 16 ) + '0';
+            if(hour[0] == '0') hour[0] = ' ';
+            hour[1] = ( TIME[2] & 0x0f ) + '0';
+
+
+            minute[0] = ( TIME[1] / 16 ) + '0';
+            if(minute[0] == '0') minute[0] = ' ';
+            minute[1] = ( TIME[1] & 0x0f ) + '0';
+
+
+            second[0] = ( TIME[0] / 16 ) + '0';
+            if(second[0] == '0') second[0] = ' ';
+            second[1] = ( TIME[0] & 0x0f ) + '0';
+
+            //        OLED_Clear();
+        }
+        if（OLED_OnOff）
+    {
+        OLED_ShowString ( 24, 2, year, 16 );
+            OLED_ShowString ( 56, 2, month, 16 );
+            OLED_ShowString ( 88, 2, day, 16 );
+            OLED_ShowCHinese ( 108, 5, week_num);
+            OLED_ShowString ( 4, 5, hour, 16 );
+            OLED_ShowString ( 28, 5, minute, 16 );
+            OLED_ShowString ( 52, 5, second, 16 );
+        }
+        delayxms ( 10 );
+        if(++tick >= 100) tick = 0;
+
+    }
+
+}
